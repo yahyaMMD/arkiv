@@ -7,16 +7,52 @@ function setVisible(node, visible) {
 
 const $ = (id) => document.getElementById(id);
 
-function backend() {
-  return window.pywebview && window.pywebview.api;
-}
+const API_ROUTES = {
+  get_state: { method: "GET", path: "/api/state" },
+  list_files: { method: "GET", path: "/api/files", query: (category) => ({ category: category || "" }) },
+  choose_folder: { method: "POST", path: "/api/choose_folder" },
+  confirm_library: { method: "POST", path: "/api/confirm_library", body: (path) => ({ path }) },
+  start_sort: { method: "POST", path: "/api/start_sort" },
+  cancel_sort: { method: "POST", path: "/api/cancel_sort" },
+  undo_last: { method: "POST", path: "/api/undo_last" },
+  set_auto_sort: { method: "POST", path: "/api/set_auto_sort", body: (enabled) => ({ enabled: Boolean(enabled) }) },
+  set_model: { method: "POST", path: "/api/set_model", body: (model) => ({ model }) },
+  set_api_key: { method: "POST", path: "/api/set_api_key", body: (key) => ({ key }) },
+  test_connection: { method: "POST", path: "/api/test_connection" },
+  open_root: { method: "POST", path: "/api/open_root" },
+  open_category: { method: "POST", path: "/api/open_category", body: (name) => ({ name }) },
+  reveal_file: { method: "POST", path: "/api/reveal_file", body: (path) => ({ path }) },
+};
 
 async function call(name, ...args) {
-  const api = backend();
-  if (!api || typeof api[name] !== "function") {
-    throw new Error("Arkiv is still starting.");
+  if (window.__arkivDemo && typeof window.__arkivDemo[name] === "function") {
+    return window.__arkivDemo[name](...args);
   }
-  return api[name](...args);
+  const route = API_ROUTES[name];
+  if (!route) throw new Error(`Unknown Arkiv action: ${name}`);
+  let url = route.path;
+  if (route.query) {
+    const params = new URLSearchParams(route.query(...args));
+    url = `${url}?${params.toString()}`;
+  }
+  const options = { method: route.method, headers: { Accept: "application/json" } };
+  if (route.method !== "GET") {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(route.body ? route.body(...args) : {});
+  }
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(text || "Arkiv returned an invalid response.");
+  }
+  if (!response.ok) {
+    const message = (data && data.error) || `Arkiv request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  return data;
 }
 
 function toast(message) {
@@ -104,9 +140,16 @@ async function refresh() {
     if (ui.selected) state.visible = await call("list_files", ui.selected);
     else state.visible = state.recent || [];
     ui.state = state;
+    ui.bootFailures = 0;
     render(state);
   } catch (error) {
-    /* The next poll retries. */
+    ui.bootFailures = (ui.bootFailures || 0) + 1;
+    if (!$("boot").classList.contains("hidden") && ui.bootFailures >= 3) {
+      $("boot").textContent = "Connecting to Arkiv…";
+    }
+    if (!$("boot").classList.contains("hidden") && ui.bootFailures >= 20) {
+      $("boot").textContent = "Could not connect to Arkiv. Close the window and open START Arkiv.bat again.";
+    }
   } finally {
     refresh.running = false;
   }
@@ -468,19 +511,43 @@ async function saveKey(showToast = true) {
 }
 
 function start() {
+  if (ui.started) return;
+  ui.started = true;
   bind();
   refresh();
   if (!ui.timer) ui.timer = setInterval(refresh, 700);
 }
 
-if (new URLSearchParams(location.search).has("demo")) {
-  window.pywebview = { api: createDemo() };
-  start();
-} else if (window.pywebview && window.pywebview.api) {
-  start();
-} else {
-  window.addEventListener("pywebviewready", start);
+async function waitForApi() {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch("/api/ping", { cache: "no-store" });
+      if (response.ok) return true;
+    } catch {
+      // server still coming up
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return false;
 }
+
+async function bootWhenReady() {
+  if (new URLSearchParams(location.search).has("demo")) {
+    window.__arkivDemo = createDemo();
+    start();
+    return;
+  }
+  $("boot").textContent = "Opening the library…";
+  const ready = await waitForApi();
+  if (!ready) {
+    $("boot").textContent = "Could not connect to Arkiv. Close this window and open START Arkiv.bat again.";
+    return;
+  }
+  start();
+}
+
+bootWhenReady();
 
 function createDemo() {
   const state = {

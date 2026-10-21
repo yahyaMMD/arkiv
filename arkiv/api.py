@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import webview
-
 from arkiv.files import clean_category, contained
+from arkiv.http_api import pick_folder_native
 from arkiv.platform_open import open_path, reveal_path
 from arkiv.service import LibraryService
 
@@ -21,17 +20,13 @@ class ArkivApi:
         return self.service.list_files(category or "")
 
     def choose_folder(self) -> dict:
-        window = self.window
-        if window is None:
-            return {"ok": False, "error": "The window is not ready."}
-        kind = _folder_kind()
         try:
-            selected = window.create_file_dialog(kind)
-        except Exception:
-            return {"ok": False, "error": "The folder picker could not open."}
+            selected = pick_folder_native(self.window)
+        except Exception as exc:
+            return {"ok": False, "error": str(exc) or "The folder picker could not open."}
         if not selected:
             return {"ok": False}
-        return self.service.inspect(selected[0])
+        return self.service.inspect(selected)
 
     def confirm_library(self, path: str) -> dict:
         placed = self.service.set_root(path or "")
@@ -91,11 +86,3 @@ class ArkivApi:
             return {"ok": False, "error": "That file is outside the library."}
         reveal_path(file_path)
         return {"ok": True}
-
-
-def _folder_kind():
-    dialog = getattr(webview, "FileDialog", None)
-    kind = getattr(dialog, "FOLDER", None) if dialog else None
-    if kind is None:
-        kind = getattr(webview, "FOLDER_DIALOG")
-    return kind
