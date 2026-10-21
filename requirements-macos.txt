@@ -1,0 +1,6 @@
+-r requirements.txt
+pyobjc-core==10.3.2
+pyobjc-framework-Cocoa==10.3.2
+pyobjc-framework-WebKit==10.3.2
+pyobjc-framework-Quartz==10.3.2
+pyobjc-framework-security==10.3.2

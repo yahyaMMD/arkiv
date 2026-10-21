@@ -1,0 +1,11 @@
+#!/bin/bash
+ROOT="$(cd -P "$(dirname "$0")/../../.." && pwd)"
+mkdir -p "$ROOT/data"
+LOG="$ROOT/data/launch.log"
+cd "$ROOT"
+if [ ! -x "$ROOT/.venv/bin/python" ]; then
+  /usr/bin/python3 -m venv "$ROOT/.venv" >>"$LOG" 2>&1
+  "$ROOT/.venv/bin/pip" install -r "$ROOT/requirements-macos.txt" >>"$LOG" 2>&1
+fi
+export PYTHONUNBUFFERED=1
+exec "$ROOT/.venv/bin/python" "$ROOT/main.py" >>"$LOG" 2>&1

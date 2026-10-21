@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arkiv</title>
+  <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#c6a36a"/>
+          <path d="M10 23.5 V9.2 h7.4 a4.6 4.6 0 0 1 0 9.2 H10" fill="none" stroke="#241c14" stroke-width="2.3" stroke-linecap="square"/>
+          <path d="M16.6 18.4 L22.2 23.5" fill="none" stroke="#241c14" stroke-width="2.3" stroke-linecap="square"/>
+        </svg>
+        <div>
+          <p class="brand-name">Arkiv</p>
+          <p class="brand-sub">File librarian</p>
+        </div>
+      </div>
+      <button id="path-button" class="path" type="button" hidden></button>
+      <div class="top-actions">
+        <button id="watch" class="watch" type="button" aria-pressed="false" hidden>
+          <span class="watch-dot" aria-hidden="true"></span>
+          <span id="watch-label">Watch off</span>
+        </button>
+        <button id="model-button" class="quiet" type="button" hidden>Model</button>
+        <button id="settings-open" class="quiet" type="button">Settings</button>
+      </div>
+    </header>
+
+    <p id="boot" class="boot">Opening the library…</p>
+
+    <section id="welcome" class="welcome hidden">
+      <p class="kicker">One folder, kept in order</p>
+      <h1>Give Arkiv a folder. It will file everything inside it.</h1>
+      <p class="deck">Arkiv reads each file, chooses a category, and moves it into a folder inside that same library. Anything you add later is classified the same way.</p>
+      <ol class="steps">
+        <li><span>01</span>Choose the folder Arkiv is allowed to use.</li>
+        <li><span>02</span>Every file is read and filed, one by one.</li>
+        <li><span>03</span>New files in that folder are classified too.</li>
+      </ol>
+      <button id="choose" class="btn primary" type="button">Choose a folder</button>
+      <p class="fine">Names and short excerpts are sent to OpenRouter so the model can read them. The files stay on this Mac.</p>
+    </section>
+
+    <section id="library" class="library hidden">
+      <aside class="rail">
+        <div class="rail-head">
+          <p class="kicker">Categories</p>
+          <p id="stat-line" class="stat"></p>
+        </div>
+        <div id="category-list" class="category-list"></div>
+        <div class="rail-foot">
+          <button id="change" class="text-btn" type="button">Change folder</button>
+          <button id="reveal" class="text-btn" type="button">Show in Finder</button>
+        </div>
+      </aside>
+
+      <section class="desk" aria-live="polite">
+        <div class="desk-copy">
+          <p id="desk-kicker" class="kicker"></p>
+          <h2 id="desk-title"></h2>
+          <p id="desk-text"></p>
+          <div id="progress" class="progress hidden">
+            <div class="bar"><span id="bar-fill"></span></div>
+            <p id="progress-label" class="nums"></p>
+          </div>
+          <div id="desk-actions" class="actions"></div>
+        </div>
+        <article id="card" class="card"></article>
+      </section>
+
+      <aside class="ledger">
+        <div class="rail-head">
+          <p class="kicker" id="ledger-kicker">Latest filings</p>
+          <p id="ledger-count" class="stat"></p>
+        </div>
+        <div id="ledger-list" class="ledger-list"></div>
+      </aside>
+    </section>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <p id="modal-kicker" class="kicker"></p>
+      <h2 id="modal-title"></h2>
+      <p id="modal-body"></p>
+      <div class="actions">
+        <button id="modal-cancel" class="btn ghost" type="button">Cancel</button>
+        <button id="modal-ok" class="btn primary" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="sheet-card">
+      <div class="sheet-head">
+        <div>
+          <p class="kicker">Settings</p>
+          <h2 id="settings-title">Connection</h2>
+        </div>
+        <button id="settings-close" class="quiet" type="button">Close</button>
+      </div>
+      <label class="field" for="model">Model</label>
+      <select id="model">
+        <option value="google/gemini-2.5-flash">Gemini 2.5 Flash · reads text and images</option>
+        <option value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite · faster</option>
+        <option value="openai/gpt-4.1-mini">GPT-4.1 mini</option>
+        <option value="openai/gpt-4o-mini">GPT-4o mini</option>
+        <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5</option>
+      </select>
+      <label class="field" for="custom-model">Custom model id</label>
+      <input id="custom-model" type="text" placeholder="google/gemini-2.5-flash" spellcheck="false" autocomplete="off">
+      <label class="field" for="api-key">OpenRouter key</label>
+      <input id="api-key" type="password" placeholder="Paste a new key to replace the saved one" autocomplete="off">
+      <p id="key-hint" class="fine"></p>
+      <div class="actions">
+        <button id="save-key" class="btn ghost" type="button">Save key</button>
+        <button id="test-key" class="btn primary" type="button">Test connection</button>
+      </div>
+      <p id="key-status" class="fine"></p>
+      <p class="fine">The key stays in Arkiv’s private data folder on this Mac. Short excerpts of your files are sent to the model when Arkiv classifies them.</p>
+    </div>
+  </div>
+
+  <p id="toast" class="toast" role="status"></p>
+  <script src="app.js?v=4"></script>
+</body>
+</html>
